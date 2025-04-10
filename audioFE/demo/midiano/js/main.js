@@ -137,6 +137,24 @@ async function init() {
 	if (typeof setSetting === 'function') {
 		setSetting("enableMetronome", false);
 		console.log("Metronome disabled in init");
+		
+		// Ensure FluidR3_GM is set as the default soundfont
+		setSetting("soundfontName", "FluidR3_GM");
+		console.log("Soundfont set to FluidR3_GM in init");
+	}
+	
+	// Clear specific localStorage settings if needed
+	try {
+		const SAVE_PATH_ROOT = "Midiano/SavedSettings";
+		const savedSettings = localStorage.getItem(SAVE_PATH_ROOT);
+		if (savedSettings) {
+			const settingsObj = JSON.parse(savedSettings);
+			settingsObj.soundfontName = "FluidR3_GM";
+			localStorage.setItem(SAVE_PATH_ROOT, JSON.stringify(settingsObj));
+			console.log("Updated localStorage soundfont setting to FluidR3_GM");
+		}
+	} catch (e) {
+		console.error("Error updating localStorage:", e);
 	}
 	
 	renderLoop()
@@ -199,6 +217,18 @@ document.addEventListener('DOMContentLoaded', function() {
 					span.classList.add('glyphicon-backward');
 				}
 			});
+		}
+		
+		// Explicitly set soundfont to FluidR3_GM, overriding any locally stored settings
+		if (typeof setSetting === 'function') {
+			setSetting("soundfontName", "FluidR3_GM");
+			console.log("Soundfont explicitly set to FluidR3_GM");
+			
+			// Force UI update of the soundfont selector if it exists
+			const soundfontSelector = document.querySelector('select[data-setting="soundfontName"]');
+			if (soundfontSelector) {
+				soundfontSelector.value = "FluidR3_GM";
+			}
 		}
 	}, 500);
 });
