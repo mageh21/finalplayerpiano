@@ -183,3 +183,22 @@ async function loadStartingSong() {
 		getPlayer().loadSong(response, fileName, "Sample MIDI File") // Update song title
 	) // Local: "../mz_331_3.mid")
 }
+
+// When the document is loaded, ensure the stop button has a rewind/backward symbol
+document.addEventListener('DOMContentLoaded', function() {
+	// Wait a short time to ensure the UI is fully initialized
+	setTimeout(function() {
+		// Get the stop button and ensure it displays a backward/rewind symbol
+		const stopButton = document.getElementById('stop');
+		if (stopButton) {
+			// Make sure any existing span has the backward class
+			const spans = stopButton.querySelectorAll('span');
+			spans.forEach(span => {
+				if (span.classList.contains('glyphicon-stop')) {
+					span.classList.remove('glyphicon-stop');
+					span.classList.add('glyphicon-backward');
+				}
+			});
+		}
+	}, 500);
+});
