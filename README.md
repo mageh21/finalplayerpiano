@@ -35,8 +35,8 @@ This application provides two integrated players:
 
 1. Clone the repository:
 ```
-git clone https://github.com/yourusername/musicxml-midi-player.git
-cd musicxml-midi-player
+git clone https://github.com/mageh21/music_mobile.git
+cd music_mobile
 ```
 
 2. Install dependencies:
@@ -47,16 +47,35 @@ npm install
 
 ## Running the Application
 
-Start the application with:
+There are two ways to start the application:
+
+### Method 1: Using the start script (Recommended)
+
+From the root directory, run:
+```
+./start.sh
+```
+
+This will:
+1. Check if ports 8080 and 8081 are in use
+2. Offer to kill any conflicting processes
+3. Start both servers concurrently
+
+### Method 2: Using npm directly
 
 ```
 cd audioFE
 npm run start
 ```
 
-This will start the web server on port 8080. The application will be accessible at:
+Either method will start two web servers:
+- Main application server on port 8080
+- Mobile interface server on port 8081
+
+The application will be accessible at:
 - Main application: http://localhost:8080/
 - MIDIano player: http://localhost:8080/midiano/index.html
+- Mobile interface: http://localhost:8081/
 
 ## Usage
 
@@ -69,60 +88,65 @@ This will start the web server on port 8080. The application will be accessible 
 
 ### MIDIano Player
 1. Click on "MIDI Player" in the navigation menu
-2. Upload a MIDI file using the "Upload MIDI" button
+2. Upload a MIDI file using the "Choose MIDI File" button
 3. Use the playback controls to control playback
-4. Adjust settings using the settings panel
-5. Return to the main application using the "Back to Home" button
+4. Adjust the playback speed using the slider
+5. Return to the main application using the "Back to Home" button in the top right
 
-## Converting PDF Scores
-1. In the main application, use the "Convert Score to MusicXML" section
-2. Upload a PDF or image of sheet music
-3. Click "Convert Score"
-4. Wait for the conversion to complete
-5. The converted score will automatically load into the player
+### Mobile Interface
+1. Open http://localhost:8081/ on your mobile device (ensure your device is on the same network)
+2. Browse the library of available music
+3. Upload and play your own music files
+4. Navigate through the mobile-optimized interface
 
 ## Technical Details
 
 The application consists of two main components:
 1. **MusicXML Player**: Built with custom JavaScript renderer and SoundFont support
-2. **MIDIano Player**: Integrated from [MIDIano GitHub repository](https://github.com/mageh21/midi_plyaer)
+2. **MIDIano Player**: Integrated from the MIDIano project
 
-The application uses a simple web server (ws) to serve both components from the same port.
+The application uses a simple web server (local-web-server) to serve both components:
+- Demo server (port 8080): Serves the main application with MIDIano integration
+- Mobile server (port 8081): Serves the mobile-optimized interface
 
 ## Server Configuration
 
-The application runs two server instances:
-- Demo server on port 8080: `ws -d demo --rewrite /mma/(.*) -> http://localhost:3000/$1 -p 8080`
-- Mobile server on port 8081: `ws -d src/mobile -p 8081`
+The servers are configured in the package.json file:
+```json
+"scripts": {
+  "demo:develop": "ws -d demo --rewrite '/mma/(.*) -> http://localhost:3000/$1' -p ${PORT:-8080}",
+  "mobile": "ws -d src/mobile -p ${PORT:-8081}",
+  "start": "concurrently \"npm run demo:develop\" \"npm run mobile\""
+}
+```
 
 ## Troubleshooting
 
 ### Port already in use
-If you see "EADDRINUSE" errors when starting the application, it means the ports are already in use. You can:
-1. Kill existing processes:
+If you see "EADDRINUSE" errors when starting the application:
+1. Use the start.sh script which will offer to kill conflicting processes
+2. Or manually kill the processes:
 ```
 lsof -i :8080 -i :8081 | grep LISTEN
 kill -9 [PID]  # Replace [PID] with the process IDs from the output above
 ```
-2. Or change the port in the start script
 
 ### Audio not playing
 1. Make sure your browser is not muted
 2. Try clicking on the page first (some browsers require user interaction before playing audio)
 3. Check browser console for errors
+4. Allow autoplay in your browser settings
 
 ### MIDI Player not loading
-1. Ensure you have correctly set up the MIDIano player files
-2. Check the browser console for any JavaScript errors
-3. Try refreshing the page
+1. Check the browser console for any JavaScript errors
+2. Try refreshing the page
+3. Ensure all dependencies are installed correctly
 
 ## License
 
-This project incorporates:
-- The MIDIano player (https://github.com/mageh21/midi_plyaer)
-- Custom MusicXML player
+This project is licensed under the MIT License.
 
 ## Credits
 
-- MIDIano MIDI Player: Created by [mageh21](https://github.com/mageh21/midi_plyaer)
-- MusicXML Player: Custom implementation for audio playback of MusicXML files 
+- MIDIano MIDI Player: Piano roll visualization and MIDI playback
+- Custom MusicXML implementation for sheet music rendering and audio playback 
