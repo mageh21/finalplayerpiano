@@ -142,7 +142,7 @@ const defaultSettings = {
 				type: "slider",
 				id: "pianoPosition",
 				label: "Piano Position",
-				value: 20,
+				value: 0,
 				min: 0,
 				max: 100,
 				step: 1,
