@@ -1,0 +1,33 @@
+{
+  "name": "midiano",
+  "version": "1.0.0",
+  "description": "## A JavaScript MIDI-Player/ Piano-learning webapp",
+  "main": "index.js",
+  "directories": {
+    "lib": "lib"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "webpack --config webpack.config.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Bewelge/MIDIano.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Bewelge/MIDIano/issues"
+  },
+  "homepage": "https://github.com/Bewelge/MIDIano#readme",
+  "devDependencies": {
+    "css-loader": "^7.1.2",
+    "style-loader": "^4.0.0",
+    "webpack": "^5.99.5",
+    "webpack-cli": "^6.0.1"
+  },
+  "dependencies": {
+    "vexflow": "^5.0.0"
+  }
+}
