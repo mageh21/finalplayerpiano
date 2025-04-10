@@ -735,7 +735,7 @@ export class UI {
 		if (!this.stopButton) {
 			this.stopButton = DomHelper.createGlyphiconButton(
 				"stop",
-				"stop",
+				"backward",
 				this.clickStop.bind(this)
 			)
 
