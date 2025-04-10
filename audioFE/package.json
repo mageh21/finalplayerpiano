@@ -13,7 +13,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/mageh21/music_mobile.git"
+    "url": "git+https://github.com/mageh21/finalplayerpiano.git"
   },
   "keywords": [
     "musicxml",
@@ -26,9 +26,9 @@
   "author": "mageh21",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/mageh21/music_mobile/issues"
+    "url": "https://github.com/mageh21/finalplayerpiano/issues"
   },
-  "homepage": "https://github.com/mageh21/music_mobile#readme",
+  "homepage": "https://github.com/mageh21/finalplayerpiano#readme",
   "dependencies": {
     "@fortawesome/fontawesome-free": "^6.5.1",
     "opensheetmusicdisplay": "^1.8.5",

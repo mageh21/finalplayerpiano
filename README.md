@@ -35,8 +35,8 @@ This application provides two integrated players:
 
 1. Clone the repository:
 ```
-git clone https://github.com/mageh21/music_mobile.git
-cd music_mobile
+git clone https://github.com/mageh21/finalplayerpiano.git
+cd finalplayerpiano
 ```
 
 2. Install dependencies:
