@@ -1043,6 +1043,29 @@
       .file-buttons #download-midi-btn:hover {
         background-color: #0b7dda;
       }
+
+      #upload-download-btn, #convert-download-btn {
+        display: none;
+        background-color: #4CAF50;
+        color: white;
+        border: none;
+        padding: 10px 15px;
+        text-align: center;
+        text-decoration: none;
+        font-size: 14px;
+        cursor: pointer;
+        border-radius: 4px;
+        margin-top: 10px;
+      }
+
+      #upload-download-btn:hover, #convert-download-btn:hover {
+        background-color: #45a049;
+      }
+
+      @keyframes spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+      }
     </style>
     <link rel="stylesheet" href="build/musicxml-player.css">
   </head>
@@ -1072,7 +1095,7 @@
           <h3>Upload MusicXML File</h3>
           <input type="file" id="file-input" accept=".musicxml,.mxl,.xml"/>
           <div class="file-buttons">
-            <button id="download-btn" style="display: none;">Download MusicXML</button>
+            <button id="upload-download-btn" style="display: none;">Download MusicXML</button>
             <button id="download-midi-btn" style="display: none;">Download MIDI</button>
           </div>
           <div id="feedback" class="feedback"></div>
@@ -1083,7 +1106,7 @@
           <input type="file" id="pdf-input" accept=".pdf,image/*" placeholder="Upload PDF or Image"/>
           <div class="conversion-controls">
             <button id="convert-basic-btn" disabled>Convert</button>
-            <button id="download-btn" style="display: none;">Download MusicXML</button>
+            <button id="convert-download-btn" style="display: none;">Download MusicXML</button>
           </div>
           <div id="pdf-feedback" class="feedback"></div>
         </div>
@@ -1855,7 +1878,7 @@
         const file = e.target.files[0];
         if (!file) return;
         
-        const downloadBtn = document.getElementById('download-btn');
+        const downloadBtn = document.getElementById('upload-download-btn');
         const downloadMidiBtn = document.getElementById('download-midi-btn');
         downloadBtn.style.display = 'none';
         downloadMidiBtn.style.display = 'none';
@@ -1959,15 +1982,24 @@
             await convertAndDownloadMidi(currentMusicXml, midiFilename);
           };
           
-          feedback.className = 'success';
-          feedback.textContent = 'Sample score loaded successfully!';
+          // Load the MusicXML file into the player
+          showFeedback('feedback', 'Loading MusicXML into player...', 'loading');
+          
+          // Get current instrument selection
+          const instrumentSelector = document.getElementById('instrumentSelector');
+          const selectedInstrumentId = instrumentSelector.value;
+          
+          // Create new player with the MusicXML data
+          await createNewPlayer(musicXmlText, selectedInstrumentId || null);
+          
+          showFeedback('feedback', 'MusicXML loaded successfully!', 'success');
           
           // Clear any PDF upload state
           document.getElementById('pdf-input').value = '';
         } catch (error) {
-          console.error('Error loading sample:', error);
+          console.error('Error loading MusicXML:', error);
           feedback.className = 'error';
-          feedback.textContent = 'Error loading sample score.';
+          feedback.textContent = `Error: ${error.message}`;
           playBtn.disabled = false;
           pauseBtn.disabled = true;
           rewindBtn.disabled = false;
@@ -1982,7 +2014,7 @@
         const file = event.target.files[0];
         const feedback = document.getElementById('pdf-feedback');
         const basicBtn = document.getElementById('convert-basic-btn');
-        const downloadBtn = document.getElementById('download-btn');
+        const downloadBtn = document.getElementById('convert-download-btn');
 
         clearAllFeedback(); // Clear previous messages
 
@@ -2867,19 +2899,26 @@
         feedback.textContent = '';
         feedback.className = 'feedback';
         
-        // Also hide download button when clearing feedback
-        const downloadBtn = document.getElementById('download-btn');
-        if (downloadBtn) {
-          downloadBtn.style.display = 'none';
-          currentZipBlob = null;
+        // Also hide download buttons when clearing feedback
+        const uploadDownloadBtn = document.getElementById('upload-download-btn');
+        const convertDownloadBtn = document.getElementById('convert-download-btn');
+        
+        if (uploadDownloadBtn) {
+          uploadDownloadBtn.style.display = 'none';
         }
+        
+        if (convertDownloadBtn) {
+          convertDownloadBtn.style.display = 'none';
+        }
+        
+        currentZipBlob = null;
       }
 
       // Handle PDF uploads with enhanced error handling
       async function handlePdfSelect(e) {
         const file = e.target.files[0];
         const convertBtn = document.getElementById('convert-basic-btn');
-        const downloadBtn = document.getElementById('download-btn');
+        const downloadBtn = document.getElementById('convert-download-btn');
         
         clearFeedback('pdf-feedback');
         downloadBtn.style.display = 'none';
@@ -2927,6 +2966,7 @@
           convertBtn.onclick = async () => {
             try {
               convertBtn.disabled = true;
+              const downloadBtn = document.getElementById('convert-download-btn');
               downloadBtn.style.display = 'none';
               showFeedback('pdf-feedback', 'Converting score...', 'loading');
               console.log('Starting conversion for:', file.name);
@@ -2966,7 +3006,7 @@
               // Store the zip blob for download if it's a zip file
               if (contentType?.includes('zip') || contentType?.includes('mxl') || 
                   (blob.size > 0 && (await blob.slice(0, 2).text()) === 'PK')) {
-                // Store the blob for download
+                
                 currentZipBlob = blob;
                 
                 // Show the download button
