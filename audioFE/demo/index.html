@@ -1013,6 +1013,36 @@
         from { transform: rotate(0deg); }
         to { transform: rotate(360deg); }
       }
+
+      /* Add styles for the file buttons */
+      .file-buttons {
+        margin-top: 10px;
+        display: flex;
+        gap: 10px;
+      }
+      
+      .file-buttons button {
+        background-color: #4CAF50;
+        color: white;
+        border: none;
+        padding: 8px 12px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 14px;
+        transition: background-color 0.3s;
+      }
+      
+      .file-buttons button:hover {
+        background-color: #45a049;
+      }
+      
+      .file-buttons #download-midi-btn {
+        background-color: #2196F3;
+      }
+      
+      .file-buttons #download-midi-btn:hover {
+        background-color: #0b7dda;
+      }
     </style>
     <link rel="stylesheet" href="build/musicxml-player.css">
   </head>
@@ -1041,6 +1071,10 @@
         <div class="upload-section">
           <h3>Upload MusicXML File</h3>
           <input type="file" id="file-input" accept=".musicxml,.mxl,.xml"/>
+          <div class="file-buttons">
+            <button id="download-btn" style="display: none;">Download MusicXML</button>
+            <button id="download-midi-btn" style="display: none;">Download MIDI</button>
+          </div>
           <div id="feedback" class="feedback"></div>
         </div>
 
@@ -1264,6 +1298,70 @@
     <!-- Add unzip library -->
     <script src="https://unpkg.com/unzipit@1.4.3/dist/unzipit.min.js"></script>
     <script type="module">
+      // Utility function for MIDI conversion and download
+      async function convertAndDownloadMidi(musicXml, filename = null) {
+        try {
+          showFeedback('feedback', 'Converting to MIDI...', 'loading');
+          
+          // Create a new VerovioConverter with specific options for MIDI export
+          const converter = new VerovioConverter({
+            adjustPageHeight: true,
+            breaks: 'none',
+            pageHeight: 60000,
+            pageWidth: 2000,
+            scale: 40,
+            header: 'none',
+            footer: 'none',
+            midiTempoAdjustment: 1.0,
+            mmOutput: 'all'
+          });
+          
+          // Initialize with the MusicXML content
+          await converter.initialize(musicXml);
+          
+          // Get the raw MIDI data as base64 from Verovio toolkit
+          const rawMidiData = converter._vrv.renderToMIDI();
+          console.log('Raw MIDI data length:', rawMidiData?.length);
+          
+          if (!rawMidiData || rawMidiData.length < 10) {
+            throw new Error('No valid MIDI data generated from the MusicXML file');
+          }
+          
+          // Convert base64 to binary
+          const binaryString = window.atob(rawMidiData);
+          const bytes = new Uint8Array(binaryString.length);
+          for (let i = 0; i < binaryString.length; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
+          }
+          
+          // Create blob directly from the binary data
+          const midiBlob = new Blob([bytes], { type: 'audio/midi' });
+          
+          // Create a default filename if none provided
+          if (!filename) {
+            const timestamp = new Date().toISOString().replace(/[:.-]/g, '_');
+            filename = `musicxml_export_${timestamp}.mid`;
+          }
+          
+          // Create download link
+          const downloadUrl = URL.createObjectURL(midiBlob);
+          const a = document.createElement('a');
+          a.href = downloadUrl;
+          a.download = filename;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(downloadUrl);
+          
+          showFeedback('feedback', 'MIDI file created successfully!', 'success');
+          return true;
+        } catch (error) {
+          console.error('MIDI conversion error:', error);
+          showFeedback('feedback', `MIDI conversion error: ${error.message}`, 'error');
+          return false;
+        }
+      }
+
       // Add ApiService class before other code
       class ApiService {
         static async isPdfEncrypted(file) {
@@ -1758,8 +1856,11 @@
         if (!file) return;
         
         const downloadBtn = document.getElementById('download-btn');
+        const downloadMidiBtn = document.getElementById('download-midi-btn');
         downloadBtn.style.display = 'none';
+        downloadMidiBtn.style.display = 'none';
         currentZipBlob = null;
+        currentMusicXml = null;
 
         showFeedback('feedback', 'Processing file...', 'loading');
 
@@ -1837,7 +1938,7 @@
                 throw new Error('Invalid XML format');
               }
               
-              // Hide download button for non-zip files
+              // Hide MusicXML download button for non-zip files
               downloadBtn.style.display = 'none';
               currentZipBlob = null;
             } catch (error) {
@@ -1845,230 +1946,33 @@
             }
           }
 
-          // Create player with default output
-          await createNewPlayer(musicXmlText);
-          
-          showFeedback('feedback', 'Score loaded successfully! Ready to play.', 'success');
+          // Store the MusicXML for MIDI conversion
+          currentMusicXml = musicXmlText;
 
+          // Show the MIDI download button
+          downloadMidiBtn.style.display = 'inline-block';
+          
+          // Set up MIDI download button click handler
+          downloadMidiBtn.onclick = async () => {
+            // Create a MIDI filename based on the original file
+            const midiFilename = file.name.replace(/\.(xml|musicxml|mxl)$/i, '.mid');
+            await convertAndDownloadMidi(currentMusicXml, midiFilename);
+          };
+          
+          feedback.className = 'success';
+          feedback.textContent = 'Sample score loaded successfully!';
+          
+          // Clear any PDF upload state
+          document.getElementById('pdf-input').value = '';
         } catch (error) {
-          console.error('File processing error:', error);
-          showFeedback('feedback', `Error: ${error.message}`, 'error');
-          showError(error.message);
-          currentMusicXml = null;
-          downloadBtn.style.display = 'none';
-          currentZipBlob = null;
-        }
-
-        // Reset file input
-        e.target.value = '';
-      }
-
-      // Function to handle PDF uploads and conversion
-      async function convertPdfToMusicXml(pdfFile) {
-        const feedback = document.getElementById('pdf-feedback');
-        const basicBtn = document.getElementById('convert-basic-btn');
-        const downloadBtn = document.getElementById('download-btn');
-
-        if (!pdfFile) {
+          console.error('Error loading sample:', error);
           feedback.className = 'error';
-          feedback.textContent = 'Please select a PDF or image file first.';
-          downloadBtn.style.display = 'none';
-          return;
+          feedback.textContent = 'Error loading sample score.';
+          playBtn.disabled = false;
+          pauseBtn.disabled = true;
+          rewindBtn.disabled = false;
         }
-
-        // Basic Conversion Call
-        basicBtn.onclick = async () => {
-          const formData = new FormData();
-          formData.append('file', pdfFile);
-          formData.append('filename', pdfFile.name);
-          formData.append('filetype', pdfFile.type);
-
-          feedback.className = 'loading';
-          feedback.innerHTML = '<span class="spinner"></span> Converting PDF to MusicXML...';
-          basicBtn.disabled = true;
-          downloadBtn.style.display = 'none';
-
-          try {
-            // First validate the file
-            if (!pdfFile.type.includes('pdf') && !pdfFile.type.includes('image')) {
-              throw new Error('Please upload a PDF or image file.');
-            }
-
-            // Make the API call to convert
-            const response = await fetch('http://ec2-54-252-145-103.ap-southeast-2.compute.amazonaws.com:8000/convert', {
-              method: 'POST',
-              body: formData,
-              headers: {
-                'Accept': 'application/xml, application/x-zip'
-              }
-            });
-
-            if (!response.ok) {
-              let errorMsg = `Conversion failed! Status: ${response.status}`;
-              try {
-                const errData = await response.json();
-                errorMsg = errData.detail || errorMsg;
-              } catch (e) {
-                console.warn('Error parsing error response:', e);
-              }
-              throw new Error(errorMsg);
-            }
-
-            const contentType = response.headers.get('Content-Type');
-            const blob = await response.blob();
-            
-            // Store the zip blob for download if it's a zip file
-            if (contentType?.includes('zip') || contentType?.includes('mxl') || 
-                (blob.size > 0 && (await blob.slice(0, 2).text()) === 'PK')) {
-              // Store the blob for download
-              currentZipBlob = blob;
-              
-              // Show the download button
-              downloadBtn.style.display = 'inline-block';
-              
-              // Set up download button click handler
-              downloadBtn.onclick = () => {
-                const downloadUrl = URL.createObjectURL(currentZipBlob);
-                const a = document.createElement('a');
-                a.href = downloadUrl;
-                a.download = pdfFile.name.replace(/\.[^\.]+$/, '') + '.zip';
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(downloadUrl);
-              };
-            } else {
-              // Not a zip file, hide download button
-              downloadBtn.style.display = 'none';
-              currentZipBlob = null;
-            }
-            
-            let musicXmlText = '';
-
-            // Handle different response types
-            if (contentType?.includes('zip') || contentType?.includes('mxl') || 
-                (blob.size > 0 && (await blob.slice(0, 2).text()) === 'PK')) {
-              console.log('Processing MXL/ZIP response...');
-              
-              try {
-                const { entries } = await window.unzipit.unzip(blob);
-                console.log('ZIP entries:', Object.keys(entries));
-
-                // Try to find the main MusicXML file
-                let musicXmlEntry;
-
-                // First check container.xml if it exists
-                if (entries['META-INF/container.xml']) {
-                  const containerText = await entries['META-INF/container.xml'].text();
-                  const parser = new DOMParser();
-                  const containerDoc = parser.parseFromString(containerText, 'application/xml');
-                  const rootfilePath = containerDoc.querySelector('rootfile')?.getAttribute('full-path');
-                  
-                  if (rootfilePath && entries[rootfilePath]) {
-                    musicXmlEntry = entries[rootfilePath];
-                  }
-                }
-
-                // Fallback: look for any .musicxml or .xml file
-                if (!musicXmlEntry) {
-                  musicXmlEntry = Object.values(entries).find(entry => 
-                    entry.name.endsWith('.musicxml') || entry.name.endsWith('.xml')
-                  );
-                }
-
-                if (!musicXmlEntry) {
-                  throw new Error('No MusicXML file found in the converted package');
-                }
-
-                musicXmlText = await musicXmlEntry.text();
-                console.log('Successfully extracted MusicXML from package');
-
-              } catch (zipError) {
-                console.error('Error processing MXL/ZIP:', zipError);
-                throw new Error(`Failed to process converted file: ${zipError.message}`);
-              }
-            } else {
-              // Assume direct MusicXML response
-              musicXmlText = await blob.text();
-            }
-
-            // Validate the MusicXML
-            if (!musicXmlText.trim().startsWith('<?xml') || !musicXmlText.includes('<score-partwise')) {
-              throw new Error('Invalid MusicXML received from conversion');
-            }
-
-            feedback.textContent = 'Conversion successful! Loading score...';
-            
-            // Get current instrument selection
-            const instrumentSelector = document.getElementById('instrumentSelector');
-            const selectedInstrumentId = instrumentSelector.value;
-            
-            // Create new player with the converted MusicXML and selected instrument
-            await createNewPlayer(musicXmlText, selectedInstrumentId || null);
-            
-            feedback.className = 'success';
-            feedback.textContent = 'PDF successfully converted and loaded!';
-
-          } catch (error) {
-            console.error('PDF conversion error:', error);
-            feedback.className = 'error';
-            feedback.textContent = `Conversion failed: ${error.message}`;
-            downloadBtn.style.display = 'none';
-            currentZipBlob = null;
-          } finally {
-            basicBtn.disabled = false;
-          }
-        };
       }
-
-      // Function to clear all feedback messages
-      function clearAllFeedback() {
-        const feedbacks = ['feedback', 'pdf-feedback'];
-        feedbacks.forEach(id => {
-          const element = document.getElementById(id);
-          if (element) {
-            element.textContent = '';
-            element.className = '';
-          }
-        });
-        
-        // Also hide download button
-        const downloadBtn = document.getElementById('download-btn');
-        if (downloadBtn) {
-          downloadBtn.style.display = 'none';
-        }
-        currentZipBlob = null;
-      }
-
-      // Update sample selector handler
-      document.getElementById('samples').addEventListener('change', async (event) => {
-        const sample = event.target.value;
-        if (sample) {
-          clearAllFeedback(); // Clear previous messages
-          const feedback = document.getElementById('feedback');
-          feedback.className = 'loading';
-          feedback.textContent = 'Loading sample...';
-          
-          try {
-            const response = await fetch(sample);
-            const content = await response.text();
-            await createNewPlayer(content);
-            
-            feedback.className = 'success';
-            feedback.textContent = 'Sample score loaded successfully!';
-            
-            // Clear any PDF upload state
-            document.getElementById('pdf-input').value = '';
-          } catch (error) {
-            console.error('Error loading sample:', error);
-            feedback.className = 'error';
-            feedback.textContent = 'Error loading sample score.';
-            playBtn.disabled = false;
-            pauseBtn.disabled = true;
-            rewindBtn.disabled = false;
-          }
-        }
-      });
 
       // Update file input handler
       document.getElementById('file-input').addEventListener('change', handleFileSelect);
@@ -2117,6 +2021,19 @@
           
           // Create player without initializing audio context
           await createNewPlayer(content);
+          
+          // Store the MusicXML for MIDI conversion
+          currentMusicXml = content;
+          
+          // Show the MIDI download button
+          const downloadMidiBtn = document.getElementById('download-midi-btn');
+          downloadMidiBtn.style.display = 'inline-block';
+          
+          // Set up MIDI download button click handler
+          downloadMidiBtn.onclick = async () => {
+            const filename = 'asa-branca.mid';
+            await convertAndDownloadMidi(currentMusicXml, filename);
+          };
           
           const feedback = document.getElementById('feedback');
           feedback.className = 'success';
